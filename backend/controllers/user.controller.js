@@ -1,7 +1,8 @@
+import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
-// models
-import User from "../models/user.model.js";
+import Post from "../models/post.model.js";
+import streamifier from "streamifier";
 import Notification from "../models/notification.model.js";
 
 export const getUserProfile = async (req, res) => {
@@ -84,66 +85,146 @@ export const getSuggestedUsers = async (req, res) => {
     console.log("Error in getSuggestedUsers controller", error.message);
   }
 };
-export const updateUser = async (req, res) => {
-  const { fullName, email, username, currentPassword, newPassword, bio, link } =
-    req.body;
-  let { profileImage, coverImage } = req.body;
-  const userId = req.user._id;
-  try {
-    let user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
 
+export const updateUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const {
+      fullName,
+      email,
+      username,
+      currentPassword,
+      newPassword,
+      bio,
+      link,
+    } = req.body;
+
+    let user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // ✅ Password update validation
     if (
-      (!newPassword && currentPassword) ||
+      (currentPassword && !newPassword) ||
       (!currentPassword && newPassword)
     ) {
-      return res.status(400).json({
-        error: "Please provide both current password and new password",
-      });
+      return res
+        .status(400)
+        .json({ error: "Provide both current and new password" });
     }
 
     if (currentPassword && newPassword) {
       const isMatch = await bcrypt.compare(currentPassword, user.password);
       if (!isMatch)
         return res.status(400).json({ error: "Current password is incorrect" });
-      if (newPassword.length < 6) {
+
+      if (newPassword.length < 6)
         return res
           .status(400)
-          .json({ error: "Password must be at least 6 characters long" });
-      }
+          .json({ error: "Password must be at least 6 characters" });
 
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(newPassword, salt);
     }
-    if (profileImage) {
-      if (user.profileImage) {
-        await cloudinary.uploader.destroy(
-          user.profileImage.split("/").pop().split(".")[0]
+
+    // ✅ Upload Helper
+    const uploadToCloudinary = (fileBuffer, folder) => {
+      return new Promise((resolve, reject) => {
+        if (!fileBuffer) return reject(new Error("File buffer missing"));
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
         );
+        streamifier.createReadStream(fileBuffer).pipe(uploadStream);
+      });
+    };
+
+    // ✅ Profile Image Upload
+    if (req.files?.profileImage && req.files.profileImage[0]?.buffer) {
+      if (user.profileImagePublicId) {
+        await cloudinary.uploader.destroy(user.profileImagePublicId);
       }
-      const uploadResponse = await cloudinary.uploader.upload(profileImage);
-      profileImage = uploadResponse.secure_url;
-    }
-    if (coverImage) {
-      if (user.coverImage) {
-        await cloudinary.uploader.destroy(
-          user.coverImage.split("/").pop().split(".")[0]
-        );
-      }
-      const uploadResponse = await cloudinary.uploader.upload(coverImage);
-      coverImage = uploadResponse.secure_url;
+      const result = await uploadToCloudinary(
+        req.files.profileImage[0].buffer,
+        "twitter-clone/profile"
+      );
+      user.profileImage = result.secure_url;
+      user.profileImagePublicId = result.public_id;
     }
 
+    // ✅ Cover Image Upload
+    if (req.files?.coverImage && req.files.coverImage[0]?.buffer) {
+      if (user.coverImagePublicId) {
+        await cloudinary.uploader.destroy(user.coverImagePublicId);
+      }
+      const result = await uploadToCloudinary(
+        req.files.coverImage[0].buffer,
+        "twitter-clone/cover"
+      );
+      user.coverImage = result.secure_url;
+      user.coverImagePublicId = result.public_id;
+    }
+
+    // ✅ Update text fields
     user.fullName = fullName || user.fullName;
-    user.email = email || user.email;
     user.username = username || user.username;
+    user.email = email || user.email;
     user.bio = bio || user.bio;
     user.link = link || user.link;
-    user.profileImage = profileImage || user.profileImage;
-    user.coverImage = coverImage || user.coverImage;
 
-    user = await user.save();
+    await user.save();
     user.password = null;
-    return res.status(200).json({ message: "User updated successfully" });
-  } catch (error) {}
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in updateUser:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+export const bookmarkPost = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const postId = req.params.id; // Make sure your route uses /bookmark/:id
+
+    // ✅ Validate post exists
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ✅ Check if already bookmarked
+    const isBookmarked = user.bookmarks.includes(postId);
+
+    if (isBookmarked) {
+      // Remove from bookmarks
+      user.bookmarks = user.bookmarks.filter((id) => id.toString() !== postId);
+    } else {
+      // Add to bookmarks
+      user.bookmarks.push(postId);
+      // ✅ Create notification if user bookmarks another user's post
+      if (post.user.toString() !== req.user._id.toString()) {
+        await Notification.create({
+          from: req.user._id,
+          to: post.user,
+          type: "bookmark",
+          post: postId,
+        });
+      }
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      message: isBookmarked
+        ? "Post removed from bookmarks"
+        : "Post bookmarked successfully",
+      bookmarks: user.bookmarks, // Optional: return updated bookmarks
+    });
+  } catch (error) {
+    console.error("Error in bookmarkPost:", error.message);
+    res.status(500).json({ error: error.message });
+  }
 };

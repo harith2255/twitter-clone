@@ -59,6 +59,18 @@ const userSchema = new mongoose.Schema(
         default: [],
       },
     ],
+
+    profileImagePublicId: { type: String },
+
+    coverImagePublicId: { type: String },
+
+    bookmarks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+        default: [],
+      },
+    ],
   },
   { timestamps: true }
 );
