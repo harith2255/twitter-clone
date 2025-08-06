@@ -19,6 +19,9 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
 // API Routes
+import expressListRoutes from "express-list-routes";
+expressListRoutes(app);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -29,7 +32,7 @@ const __dirname = path.resolve();
 if (process.env.NODE_ENV === "production") {
   const frontendPath = path.join(__dirname, "frontend", "dist");
   app.use(express.static(frontendPath));
-  app.get("*", (req, res) => {
+  app.get("/*", (req, res) => {
     res.sendFile(path.resolve(frontendPath, "index.html"));
   });
 }
