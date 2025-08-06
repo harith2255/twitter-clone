@@ -5,19 +5,31 @@ import Post from "../models/post.model.js";
 import streamifier from "streamifier";
 import Notification from "../models/notification.model.js";
 
+// controllers/userController.js
+
 export const getUserProfile = async (req, res) => {
-  const { username } = req.params;
   try {
+    const username = req.params.username;
+
     const user = await User.findOne({ username }).select("-password");
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-    console.log("Error in getUserProfile controller", error.message);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const posts = await Post.find({ user: user._id })
+      .populate("user", "username fullName profileImg")
+      .populate("comments.user", "username profileImg")
+      .populate({
+        path: "originalPost",
+        populate: { path: "user", select: "username fullName profileImg" },
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({ ...user.toObject(), posts });
+  } catch (err) {
+    console.error("Error fetching profile:", err.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
+
 export const followUnfollowUser = async (req, res) => {
   try {
     const { id } = req.params;
