@@ -4,7 +4,7 @@ import { v2 as cloudinary } from "cloudinary";
 import Post from "../models/post.model.js";
 import streamifier from "streamifier";
 import Notification from "../models/notification.model.js";
-
+import multer from "multer";
 // controllers/userController.js
 
 export const getUserProfile = async (req, res) => {
@@ -139,6 +139,7 @@ export const updateUser = async (req, res) => {
     }
 
     // ✅ Upload Helper
+    const upload = multer({ storage: multer.memoryStorage() });
     const uploadToCloudinary = (fileBuffer, folder) => {
       return new Promise((resolve, reject) => {
         if (!fileBuffer) return reject(new Error("File buffer missing"));
@@ -154,16 +155,14 @@ export const updateUser = async (req, res) => {
     };
 
     // ✅ Profile Image Upload
-    if (req.files?.profileImage && req.files.profileImage[0]?.buffer) {
-      if (user.profileImagePublicId) {
-        await cloudinary.uploader.destroy(user.profileImagePublicId);
-      }
-      const result = await uploadToCloudinary(
-        req.files.profileImage[0].buffer,
-        "twitter-clone/profile"
-      );
-      user.profileImage = result.secure_url;
-      user.profileImagePublicId = result.public_id;
+    if (req.files?.profileImage) {
+      user.profileImage = req.files.profileImage[0].path;
+      user.profileImagePublicId = req.files.profileImage[0].filename;
+    }
+
+    if (req.files?.coverImage) {
+      user.coverImage = req.files.coverImage[0].path;
+      user.coverImagePublicId = req.files.coverImage[0].filename;
     }
 
     // ✅ Cover Image Upload

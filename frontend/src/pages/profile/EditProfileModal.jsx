@@ -12,8 +12,8 @@ const EditProfileModal = ({ authUser }) => {
     currentPassword: "",
   });
 
-  const [profileImg, setProfileImg] = useState(null);
-  const [coverImg, setCoverImg] = useState(null);
+  const [profileImage, setProfileImage] = useState(null);
+  const [coverImage, setCoverImage] = useState(null);
   const profileRef = useRef(null);
   const coverRef = useRef(null);
 
@@ -68,13 +68,13 @@ const EditProfileModal = ({ authUser }) => {
     for (const key in formData) {
       formPayload.append(key, formData[key]);
     }
-    if (profileImg) formPayload.append("profileImg", profileImg);
-    if (coverImg) formPayload.append("coverImg", coverImg);
+    if (profileImage) formPayload.append("profileImage", profileImage);
+    if (coverImage) formPayload.append("coverImage", coverImage);
 
     updateProfile(formPayload)
       .then(() => {
-        setProfileImg(null);
-        setCoverImg(null);
+        setProfileImage(null);
+        setCoverImage(null);
       })
       .finally(() => {
         document.getElementById("edit_profile_modal").close();
@@ -109,9 +109,9 @@ const EditProfileModal = ({ authUser }) => {
                   <div className="flex items-center gap-3">
                     <img
                       src={
-                        profileImg
-                          ? URL.createObjectURL(profileImg)
-                          : authUser?.profileImg || "/avatar-placeholder.png"
+                        profileImage
+                          ? URL.createObjectURL(profileImage)
+                          : authUser?.profileImage || "/avatar-placeholder.png"
                       }
                       alt="Profile"
                       className="w-16 h-16 rounded-full object-cover border border-gray-600"
@@ -128,7 +128,7 @@ const EditProfileModal = ({ authUser }) => {
                       accept="image/*"
                       hidden
                       ref={profileRef}
-                      onChange={(e) => handleFileChange(e, setProfileImg)}
+                      onChange={(e) => handleFileChange(e, setProfileImage)}
                     />
                   </div>
 
@@ -136,9 +136,9 @@ const EditProfileModal = ({ authUser }) => {
                   <div className="flex items-center gap-3">
                     <img
                       src={
-                        coverImg
-                          ? URL.createObjectURL(coverImg)
-                          : authUser?.coverImg || "/cover-placeholder.png"
+                        coverImage
+                          ? URL.createObjectURL(coverImage)
+                          : authUser?.coverImage || "/cover-placeholder.png"
                       }
                       alt="Cover"
                       className="w-32 h-16 object-cover border border-gray-600"
@@ -155,7 +155,7 @@ const EditProfileModal = ({ authUser }) => {
                       accept="image/*"
                       hidden
                       ref={coverRef}
-                      onChange={(e) => handleFileChange(e, setCoverImg)}
+                      onChange={(e) => handleFileChange(e, setCoverImage)}
                     />
                   </div>
                 </div>

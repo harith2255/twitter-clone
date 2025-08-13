@@ -216,7 +216,9 @@ const Post = ({ post }) => {
           {post.originalPost ? (
             <div className="border border-gray-700 rounded-lg p-3">
               <div className="flex justify-between">
-                <p className="font-bold">@{post.originalPost.user.username}</p>
+                <p className="font-bold">
+                  @{post?.originalPost?.user?.username || ""}
+                </p>
                 {/* Delete Retweet Button */}
                 {authUser._id === post.user._id && (
                   <FaTrash

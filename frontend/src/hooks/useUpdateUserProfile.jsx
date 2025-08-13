@@ -20,13 +20,14 @@ const useUpdateUserProfile = () => {
           throw new Error(error.message);
         }
       },
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success("Profile updated successfully");
-        Promise.all([
+        await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["authUser"] }),
           queryClient.invalidateQueries({ queryKey: ["userProfile"] }),
         ]);
       },
+
       onError: (error) => toast.error(error.message),
     });
 

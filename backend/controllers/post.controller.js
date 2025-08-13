@@ -3,7 +3,7 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 
 import cloudinary from "../config/cloudinary.js";
-// ✅ CREATE POST
+
 export const createPost = async (req, res) => {
   try {
     const { text } = req.body;
@@ -34,7 +34,6 @@ export const createPost = async (req, res) => {
   }
 };
 
-// ✅ DELETE POST
 export const deletePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -42,7 +41,7 @@ export const deletePost = async (req, res) => {
     if (post.user.toString() !== req.user._id.toString())
       return res.status(401).json({ message: "Unauthorized" });
 
-    if (post.img) {
+    if (post.imageId) {
       const publicId = post.img.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(`twitter_clone/posts/${publicId}`);
     }
